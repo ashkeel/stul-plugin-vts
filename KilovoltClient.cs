@@ -3,6 +3,9 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -110,22 +113,36 @@ namespace StulPlugin
         private WebSocket _websocket;
         private Dictionary<string, Action<string>> _pending = new Dictionary<string, Action<string>>();
         private Dictionary<string, List<KvSubscriber>> _subscriptions = new Dictionary<string, List<KvSubscriber>>();
-
-        public async Task Connect(string url = "ws://localhost:4337/ws")
+        
+        public async Task Connect(string url = "ws://localhost:4337/ws", string authKey = "")
         {
+            var result = new TaskCompletionSource<bool>();
             _websocket = new WebSocket(url);
-            _websocket.OnOpen += () => { Debug.Log("Connected to strimertul!"); };
-            _websocket.OnError += e => { Debug.Log("Error! " + e); };
-            _websocket.OnClose += e => { Debug.Log("Connection closed!"); };
-            _websocket.OnMessage += bytes =>
+            _websocket.OnOpen += async () =>
+            {
+                Log.Info("Connected to strimertul!");
+                // Send auth key if provided
+                if (!string.IsNullOrEmpty(authKey))
+                {
+                    Log.Debug("Authenticating");
+                    await AuthFlow(authKey);
+                }
+                result.SetResult(true);
+            };
+            _websocket.OnError += e => { Log.Error("Error! " + e); };
+            _websocket.OnClose += e => { Log.Warn("Connection closed!"); };
+            _websocket.OnMessage += async bytes =>
             {
                 var message = System.Text.Encoding.UTF8.GetString(bytes);
                 var payloads = message.Split('\n');
                 foreach (var payload in payloads)
                 {
+                    Log.Debug("-> " + payload);
                     var obj = JsonConvert.DeserializeObject<ServerMessage>(payload);
                     switch (obj.type)
                     {
+                        case "hello":
+                            break;
                         case "response":
                             // Handle response
                             if (_pending.ContainsKey(obj.request_id))
@@ -151,14 +168,14 @@ namespace StulPlugin
 
                             break;
                         default:
-                            print($"unknown msg: {obj.type}");
+                            Log.Error($"unknown msg: {obj.type}");
                             break;
                     }
                 }
             };
 
-            // waiting for messages
-            await _websocket.Connect();
+            _websocket.Connect();
+            await result.Task;
         }
 
         // Basic functions (bare string values)
@@ -204,6 +221,45 @@ namespace StulPlugin
         public async Task<T> GetJSON<T>(string key) => JsonConvert.DeserializeObject<T>(await Get(key));
         public async Task SetJSON<T>(string key, T data) => await Set(key, JsonConvert.SerializeObject(data));
 
+        // Auth flow
+
+        [Serializable]
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
+        class AuthChallenge
+        {
+            public string challenge;
+            public string salt;
+        }
+
+        [Serializable]
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
+        class AuthResponse
+        {
+            public string hash;
+
+            public AuthResponse(string hash)
+            {
+                this.hash = hash;
+            }
+        }
+
+        private async Task AuthFlow(string authKey)
+        {
+            // Send challenge request
+            var challenge = await Send<string, AuthChallenge>(new ClientMessage<string>("klogin", null));
+
+            // Prepare hash
+            var keyBytes = Encoding.UTF8.GetBytes(authKey);
+            var challengeBytes = Convert.FromBase64String(challenge.challenge);
+            var saltBytes = Convert.FromBase64String(challenge.salt);
+            var hasher = new HMACSHA256(keyBytes.Concat(saltBytes).ToArray());
+            var result = hasher.ComputeHash(challengeBytes);
+
+            // Send response
+            var response = new AuthResponse(Convert.ToBase64String(result));
+            await SendMessage(new ClientMessage<AuthResponse>("kauth", response));
+        }
+
         // Internals for sending messages
 
         private async Task<TResponse> Send<TRequest, TResponse>(ClientMessage<TRequest> message)
@@ -226,6 +282,7 @@ namespace StulPlugin
             }
 
             var json = JsonConvert.SerializeObject(message);
+            Log.Debug("<- " + json);
             await _websocket.SendText(json);
         }
 
