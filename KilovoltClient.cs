@@ -4,13 +4,12 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
-using TwitchLib.Client.Models;
 using UnityEngine;
 
 namespace StulPlugin
 {
     using KvSubscriber = Action<KvData>;
-    
+
     [Serializable]
     class KvInfo
     {
@@ -59,23 +58,24 @@ namespace StulPlugin
         public bool? ok;
         public string request_id;
     }
-    
+
     [Serializable]
-    class ServerResponse<T>: ServerMessage {
+    class ServerResponse<T> : ServerMessage
+    {
         public T data;
     }
-    
+
     [Serializable]
     [SuppressMessage("ReSharper", "InconsistentNaming")]
-    class ServerPush: ServerMessage
+    class ServerPush : ServerMessage
     {
         public string key;
         public string new_value;
     }
-    
+
     [Serializable]
     [SuppressMessage("ReSharper", "InconsistentNaming")]
-    class ServerError: ServerMessage
+    class ServerError : ServerMessage
     {
         public string error;
         public string details;
@@ -90,20 +90,20 @@ namespace StulPlugin
 
         public static ClientMessage<KvInfo> Unsubscribe(string key)
         {
-            return new ClientMessage<KvInfo>("kunsub", new KvInfo(key)); 
+            return new ClientMessage<KvInfo>("kunsub", new KvInfo(key));
         }
 
         public static ClientMessage<KvInfo> Get(string key)
         {
             return new ClientMessage<KvInfo>("kget", new KvInfo(key));
         }
-        
+
         public static ClientMessage<KvData> SetKey(string key, string data)
         {
             return new ClientMessage<KvData>("kset", new KvData(key, data));
         }
     }
-    
+
 
     public class KilovoltClient : MonoBehaviour
     {
@@ -111,7 +111,7 @@ namespace StulPlugin
         private Dictionary<string, Action<string>> _pending = new Dictionary<string, Action<string>>();
         private Dictionary<string, List<KvSubscriber>> _subscriptions = new Dictionary<string, List<KvSubscriber>>();
 
-        public async void Connect(string url = "ws://localhost:4337/ws")
+        public async Task Connect(string url = "ws://localhost:4337/ws")
         {
             _websocket = new WebSocket(url);
             _websocket.OnOpen += () => { Debug.Log("Connected to strimertul!"); };
@@ -134,6 +134,7 @@ namespace StulPlugin
                                 _pending.Remove(obj.request_id);
                                 callback(payload);
                             }
+
                             break;
                         case "push":
                             // Handle subs
@@ -147,6 +148,7 @@ namespace StulPlugin
                                     subscriber(data);
                                 }
                             }
+
                             break;
                         default:
                             print($"unknown msg: {obj.type}");
@@ -160,13 +162,13 @@ namespace StulPlugin
         }
 
         // Basic functions (bare string values)
-        
+
         public async Task<string> Get(string key)
         {
             var msg = KvMessages.Get(key);
             return await Send<KvInfo, string>(msg);
         }
-        
+
         public async Task Set(string key, string data)
         {
             var msg = KvMessages.SetKey(key, data);
@@ -179,10 +181,11 @@ namespace StulPlugin
             {
                 _subscriptions[key] = new List<KvSubscriber>();
             }
+
             _subscriptions[key].Add(callback);
-           await SendMessage(KvMessages.Subscribe(key));
+            await SendMessage(KvMessages.Subscribe(key));
         }
-        
+
         public async Task UnsubscribeKey(string key, Action<KvData> callback)
         {
             if (_subscriptions.ContainsKey(key))
@@ -195,9 +198,9 @@ namespace StulPlugin
                 }
             }
         }
-        
+
         // JSON shortcuts
-        
+
         public async Task<T> GetJSON<T>(string key) => JsonConvert.DeserializeObject<T>(await Get(key));
         public async Task SetJSON<T>(string key, T data) => await Set(key, JsonConvert.SerializeObject(data));
 
@@ -233,7 +236,15 @@ namespace StulPlugin
 
         private async void OnApplicationQuit()
         {
-            await _websocket.Close();
+            await Close();
+        }
+
+        public async Task Close()
+        {
+            if (_websocket.State == WebSocketState.Open)
+            {
+                await _websocket.Close();
+            }
         }
     }
 }

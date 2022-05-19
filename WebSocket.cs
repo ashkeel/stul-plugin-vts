@@ -25,7 +25,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-
 using UnityEngine;
 using System.Collections;
 
@@ -45,7 +44,7 @@ public class MainThreadUtil : MonoBehaviour
     public static void Run(IEnumerator waitForUpdate)
     {
         synchronizationContext.Post(_ => Instance.StartCoroutine(
-                    waitForUpdate), null);
+            waitForUpdate), null);
     }
 
     void Awake()
@@ -75,7 +74,9 @@ public class WaitForUpdate : CustomYieldInstruction
 
         public bool IsCompleted { get; set; }
 
-        public void GetResult() { }
+        public void GetResult()
+        {
+        }
 
         public void Complete()
         {
@@ -99,8 +100,11 @@ public class WaitForUpdate : CustomYieldInstruction
 namespace NativeWebSocket
 {
     public delegate void WebSocketOpenEventHandler();
+
     public delegate void WebSocketMessageEventHandler(byte[] data);
+
     public delegate void WebSocketErrorEventHandler(string errorMsg);
+
     public delegate void WebSocketCloseEventHandler(WebSocketCloseCode closeCode);
 
     public enum WebSocketCloseCode
@@ -144,16 +148,14 @@ namespace NativeWebSocket
     {
         public static WebSocketCloseCode ParseCloseCodeEnum(int closeCode)
         {
-
             if (WebSocketCloseCode.IsDefined(typeof(WebSocketCloseCode), closeCode))
             {
-                return (WebSocketCloseCode)closeCode;
+                return (WebSocketCloseCode) closeCode;
             }
             else
             {
                 return WebSocketCloseCode.Undefined;
             }
-
         }
 
         public static WebSocketException GetErrorMessageFromCode(int errorCode, Exception inner)
@@ -163,7 +165,8 @@ namespace NativeWebSocket
                 case -1:
                     return new WebSocketUnexpectedException("WebSocket instance not found.", inner);
                 case -2:
-                    return new WebSocketInvalidStateException("WebSocket is already connected or in connecting state.", inner);
+                    return new WebSocketInvalidStateException("WebSocket is already connected or in connecting state.",
+                        inner);
                 case -3:
                     return new WebSocketInvalidStateException("WebSocket is not connected.", inner);
                 case -4:
@@ -173,7 +176,8 @@ namespace NativeWebSocket
                 case -6:
                     return new WebSocketInvalidStateException("WebSocket is not in open state.", inner);
                 case -7:
-                    return new WebSocketInvalidArgumentException("Cannot close WebSocket. An invalid code was specified or reason is too long.", inner);
+                    return new WebSocketInvalidArgumentException(
+                        "Cannot close WebSocket. An invalid code was specified or reason is too long.", inner);
                 default:
                     return new WebSocketUnexpectedException("Unknown error.", inner);
             }
@@ -182,30 +186,62 @@ namespace NativeWebSocket
 
     public class WebSocketException : Exception
     {
-        public WebSocketException() { }
-        public WebSocketException(string message) : base(message) { }
-        public WebSocketException(string message, Exception inner) : base(message, inner) { }
+        public WebSocketException()
+        {
+        }
+
+        public WebSocketException(string message) : base(message)
+        {
+        }
+
+        public WebSocketException(string message, Exception inner) : base(message, inner)
+        {
+        }
     }
 
     public class WebSocketUnexpectedException : WebSocketException
     {
-        public WebSocketUnexpectedException() { }
-        public WebSocketUnexpectedException(string message) : base(message) { }
-        public WebSocketUnexpectedException(string message, Exception inner) : base(message, inner) { }
+        public WebSocketUnexpectedException()
+        {
+        }
+
+        public WebSocketUnexpectedException(string message) : base(message)
+        {
+        }
+
+        public WebSocketUnexpectedException(string message, Exception inner) : base(message, inner)
+        {
+        }
     }
 
     public class WebSocketInvalidArgumentException : WebSocketException
     {
-        public WebSocketInvalidArgumentException() { }
-        public WebSocketInvalidArgumentException(string message) : base(message) { }
-        public WebSocketInvalidArgumentException(string message, Exception inner) : base(message, inner) { }
+        public WebSocketInvalidArgumentException()
+        {
+        }
+
+        public WebSocketInvalidArgumentException(string message) : base(message)
+        {
+        }
+
+        public WebSocketInvalidArgumentException(string message, Exception inner) : base(message, inner)
+        {
+        }
     }
 
     public class WebSocketInvalidStateException : WebSocketException
     {
-        public WebSocketInvalidStateException() { }
-        public WebSocketInvalidStateException(string message) : base(message) { }
-        public WebSocketInvalidStateException(string message, Exception inner) : base(message, inner) { }
+        public WebSocketInvalidStateException()
+        {
+        }
+
+        public WebSocketInvalidStateException(string message) : base(message)
+        {
+        }
+
+        public WebSocketInvalidStateException(string message, Exception inner) : base(message, inner)
+        {
+        }
     }
 
     public class WaitForBackgroundThread
@@ -317,7 +353,8 @@ namespace NativeWebSocket
                     m_Socket.Options.SetRequestHeader(header.Key, header.Value);
                 }
 
-                foreach (string subprotocol in subprotocols) {
+                foreach (string subprotocol in subprotocols)
+                {
                     m_Socket.Options.AddSubProtocol(subprotocol);
                 }
 
@@ -377,10 +414,12 @@ namespace NativeWebSocket
             var encoded = Encoding.UTF8.GetBytes(message);
 
             // m_Socket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
-            return SendMessage(sendTextQueue, WebSocketMessageType.Text, new ArraySegment<byte>(encoded, 0, encoded.Length));
+            return SendMessage(sendTextQueue, WebSocketMessageType.Text,
+                new ArraySegment<byte>(encoded, 0, encoded.Length));
         }
 
-        private async Task SendMessage(List<ArraySegment<byte>> queue, WebSocketMessageType messageType, ArraySegment<byte> buffer)
+        private async Task SendMessage(List<ArraySegment<byte>> queue, WebSocketMessageType messageType,
+            ArraySegment<byte> buffer)
         {
             // Return control to the calling method immediately.
             // await Task.Yield ();
@@ -411,7 +450,8 @@ namespace NativeWebSocket
                 if (!Monitor.TryEnter(m_Socket, 1000))
                 {
                     // If we couldn't obtain exclusive access to the socket in one second, something is wrong.
-                    await m_Socket.CloseAsync(WebSocketCloseStatus.InternalServerError, string.Empty, m_CancellationToken);
+                    await m_Socket.CloseAsync(WebSocketCloseStatus.InternalServerError, string.Empty,
+                        m_CancellationToken);
                     return;
                 }
 
@@ -509,8 +549,7 @@ namespace NativeWebSocket
                         {
                             result = await m_Socket.ReceiveAsync(buffer, m_CancellationToken);
                             ms.Write(buffer.Array, buffer.Offset, result.Count);
-                        }
-                        while (!result.EndOfMessage);
+                        } while (!result.EndOfMessage);
 
                         ms.Seek(0, SeekOrigin.Begin);
 
@@ -518,7 +557,7 @@ namespace NativeWebSocket
                         {
                             lock (IncomingMessageLock)
                             {
-                              m_MessageList.Add(ms.ToArray());
+                                m_MessageList.Add(ms.ToArray());
                             }
 
                             //using (var reader = new StreamReader(ms, Encoding.UTF8))
@@ -531,13 +570,13 @@ namespace NativeWebSocket
                         {
                             lock (IncomingMessageLock)
                             {
-                              m_MessageList.Add(ms.ToArray());
+                                m_MessageList.Add(ms.ToArray());
                             }
                         }
                         else if (result.MessageType == WebSocketMessageType.Close)
                         {
                             await Close();
-                            closeCode = WebSocketHelpers.ParseCloseCodeEnum((int)result.CloseStatus);
+                            closeCode = WebSocketHelpers.ParseCloseCodeEnum((int) result.CloseStatus);
                             break;
                         }
                     }
