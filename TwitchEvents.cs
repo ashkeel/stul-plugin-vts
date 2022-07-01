@@ -74,15 +74,51 @@ namespace StulPlugin
     }
 
     [Serializable]
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
+    public class TwitchRewardData
+    {
+        public string id;
+        public string title;
+        public string prompt;
+        public int cost;
+    }
+
+    [Serializable]
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
+    public class TwitchRedeemEventData
+    {
+        public string broadcaster_user_id;
+        public string broadcaster_user_login;
+        public string broadcaster_user_name;
+        public string id;
+        public string user_id;
+        public string user_login;
+        public string user_name;
+        public string user_input;
+        public string status;
+        public string redeemed_at;
+        public TwitchRewardData reward;
+    }
+
+
+    
+    [Serializable]
     public class TwitchRaidEvent : TwitchEvent
     {
         [JsonProperty("event")] public TwitchRaidEventData eventData;
+    }
+    
+    [Serializable]
+    public class TwitchRedeemEvent : TwitchEvent
+    {
+        [JsonProperty("event")] public TwitchRedeemEventData eventData;
     }
 
     public class TwitchEventSource
     {
         public event Action<TwitchChatMessage> OnChatMessage;
         public event Action<TwitchRaidEvent> OnRaid;
+        public event Action<TwitchRedeemEvent> OnRedeem;
 
         public async Task SetClient(KilovoltClient client)
         {
@@ -104,6 +140,10 @@ namespace StulPlugin
                     case "channel.raid":
                         var raid = JsonConvert.DeserializeObject<TwitchRaidEvent>(data.data);
                         OnRaid?.Invoke(raid);
+                        break;
+                    case "channel.channel_points_custom_reward_redemption.add":
+                        var redeem = JsonConvert.DeserializeObject<TwitchRedeemEvent>(data.data);
+                        OnRedeem?.Invoke(redeem);
                         break;
                 }
             });
