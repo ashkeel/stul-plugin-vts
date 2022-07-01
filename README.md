@@ -4,6 +4,8 @@ Strimertul integration for VTube Studio.
 
 Connects to strimertul and parses events and chat messages.
 
+Contains extra code specific to my (Ash Keel) models, but feel free to reuse anything you want!
+
 ## Building
 
 Create a new file called `StulPlugin.csproj.user` with the following content:
