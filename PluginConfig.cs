@@ -11,6 +11,7 @@ namespace StulPlugin
         public static ConfigEntry<int> RaidChaosItemsPerMessage;
 
         public static ConfigEntry<string> CostumeSwapRedeemID;
+        public static ConfigEntry<int> CostumeSwapDuration;
 
         public static void Initialize(ConfigFile config)
         {
@@ -47,6 +48,11 @@ namespace StulPlugin
                 "CostumeSwapRedeemID",
                 "b7fd0393-7618-4413-b87c-b4565a596911",
                 "Redeem ID for the costume swap");
+            CostumeSwapDuration = config.Bind(
+                "Redeems",
+                "CostumeSwapDuration",
+                900, // 15 minutes
+                "Duration for costume swap redeems (doesn't apply to hotkeys)");
         }
     }
 }
