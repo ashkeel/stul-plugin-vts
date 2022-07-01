@@ -13,9 +13,9 @@ namespace StulPlugin
         public const string Version = "0.1.0";
 
         private KilovoltClient _kv;
-        private TwitchEventSource _twitch = new TwitchEventSource();
+        private readonly TwitchEventSource _twitch = new TwitchEventSource();
         private ItemSpawner _trashySpawner;
-        private CostumeManager _costumeManager = new CostumeManager();
+        private readonly CostumeManager _costumeManager = new CostumeManager();
 
         public StulPlugin()
         {
@@ -39,7 +39,25 @@ namespace StulPlugin
             {
                 if (redeem.eventData.reward.id == PluginConfig.CostumeSwapRedeemID.Value)
                 {
-                    var costume = redeem.eventData.user_input;
+                    CostumeManager.Costume costume;
+                    switch (redeem.eventData.user_input)
+                    {
+                        case "casual":
+                            costume = CostumeManager.Costume.Casual;
+                            break;
+                        case "pain":
+                            costume = CostumeManager.Costume.Pain;
+                            break;
+                        case "trash":
+                            costume = CostumeManager.Costume.Trash;
+                            break;
+                        case "xmas": case "christmas":
+                            costume = CostumeManager.Costume.Christmas;
+                            break;
+                        default:
+                            // TODO Refund points!!
+                            return;
+                    }
                     _costumeManager.SwitchTo(costume);
                 }
             };

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 using Live2D.Cubism.Core;
 using Live2D.Cubism.Rendering;
 using UnityEngine;
@@ -8,14 +9,23 @@ namespace StulPlugin
 {
     public class CostumeManager
     {
+        public enum Costume
+        {
+            Casual,
+            Pain,
+            Trash,
+            Christmas,
+        }
+
         private static HotkeyManager _manager;
+
+        private static int Delay => PluginConfig.CostumeSwapDuration.Value * 1000;
 
         /// <summary>
         /// Switch to alternate costume, most likely only temporarily
         /// </summary>
-        /// <param name="costume">Costume identifier</param>
-        /// <returns>true if the costume switch could and was performed, false otherwise</returns>
-        public bool SwitchTo(string costume)
+        /// <param name="costume">Costume to switch to</param>
+        public async void SwitchTo(Costume costume)
         {
             if (_manager == null)
             {
@@ -25,31 +35,30 @@ namespace StulPlugin
             switch (costume)
             {
                 // Hotkey costumes
-                case "casual":
+                case Costume.Casual:
                     FindAndExecuteHotkey("CostumeRedeem/casual");
-                    return true;
-                case "pain":
+                    return;
+                case Costume.Pain:
                     FindAndExecuteHotkey("CostumeRedeem/pain");
-                    return true;
-                case "trash":
+                    return;
+                case Costume.Trash:
                     FindAndExecuteHotkey("CostumeRedeem/trash");
-                    return true;
+                    return;
                 // Texture swaps
-                case "xmas":
+                case Costume.Christmas:
                     SwapTextures("costumes/xmas.png", 0);
                     // Have to do the timer manually (sad!)
-                    TimerUtils.RunAfter(PluginConfig.CostumeSwapDuration.Value * 1000, RestoreTextures);
-                    return true;
+                    await Task.Delay(Delay);
+                    RestoreTextures();
+                    return;
             }
-
-            return false;
         }
 
         private void RestoreTextures()
         {
             // Get active model
             Log.Debug($"Restoring original textures");
-            var model= GameObject.Find("Live2DModel").GetComponentInChildren<CubismTextureReplacer>();
+            var model = GameObject.Find("Live2DModel").GetComponentInChildren<CubismTextureReplacer>();
             model.Reload();
         }
 
@@ -63,11 +72,12 @@ namespace StulPlugin
             // Get active model
             var cubismModel = GameObject.Find("Live2DModel").GetComponentInChildren<CubismModel>();
             var vtsModel = cubismModel.gameObject.GetComponent<VTubeStudioModel>();
-            
+
             // Load texture
             var modelPath = Path.GetDirectoryName(vtsModel.Live2DModelJson.AssetPath);
             var texturePath = $"{modelPath}/{name}";
-            var replacementTexture = IOHelper.GetCubismAssetLoadingHandler()(typeof (Texture2D), texturePath) as Texture2D;
+            var replacementTexture =
+                IOHelper.GetCubismAssetLoadingHandler()(typeof(Texture2D), texturePath) as Texture2D;
             Log.Debug($"Loaded replacement texture: {replacementTexture}");
 
             foreach (CubismDrawable drawable in cubismModel.Drawables)
@@ -90,7 +100,7 @@ namespace StulPlugin
             var hotkey = _manager.hotkeys.Find(entry => entry.Name == hotkeyName);
             if (hotkey == null)
             {
-                throw new Exception("hotkey not found");
+                throw new ArgumentException("hotkey not found");
             }
 
             _manager.ExecuteHotkey(hotkey);
