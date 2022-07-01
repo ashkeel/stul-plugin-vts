@@ -12,16 +12,17 @@ namespace StulPlugin
     {
         public const string Version = "0.1.0";
 
-        private KilovoltClient kv;
-        private TwitchEventSource twitch = new TwitchEventSource();
-        private ItemSpawner trashySpawner;
+        private KilovoltClient _kv;
+        private TwitchEventSource _twitch = new TwitchEventSource();
+        private ItemSpawner _trashySpawner;
+        private CostumeManager _costumeManager = new CostumeManager();
 
         public StulPlugin()
         {
             // Setup configuration
             PluginConfig.Initialize(Config);
             
-            kv = gameObject.AddComponent<KilovoltClient>();
+            _kv = gameObject.AddComponent<KilovoltClient>();
         }
 
         private void Start()
@@ -29,17 +30,30 @@ namespace StulPlugin
             StartCoroutine(ConnectKV());
 
             SetupRaidChaos();
+            SetupCostumeSwap();
+        }
+
+        private void SetupCostumeSwap()
+        {
+            _twitch.OnRedeem += (redeem) =>
+            {
+                if (redeem.eventData.reward.id == PluginConfig.CostumeSwapRedeemID.Value)
+                {
+                    var costume = redeem.eventData.user_input;
+                    _costumeManager.SwitchTo(costume);
+                }
+            };
         }
 
         private void SetupRaidChaos()
         {
             var raidChaosDuration = TimeSpan.FromSeconds(PluginConfig.RaidChaosDuration.Value);
-            trashySpawner = FindObjectOfType<ItemSpawner>();
+            _trashySpawner = FindObjectOfType<ItemSpawner>();
             var raidChaosActive = false;
             var raidChaosLast = DateTime.Now;
             var fakeTrigger = new TriggerConfig();
             fakeTrigger.ItemCount =PluginConfig.RaidChaosItemsPerMessage.Value;
-            twitch.OnChatMessage += message =>
+            _twitch.OnChatMessage += message =>
             {
                 if (raidChaosActive)
                 {
@@ -50,10 +64,10 @@ namespace StulPlugin
                         Log.Debug("Raid chaos disabled");
                         return;
                     }
-                    trashySpawner.SpawnTrash(fakeTrigger);
+                    _trashySpawner.SpawnTrash(fakeTrigger);
                 }
             };
-            twitch.OnRaid += raid =>
+            _twitch.OnRaid += raid =>
             {
                 raidChaosActive = true;
                 raidChaosLast = DateTime.Now;
@@ -63,7 +77,7 @@ namespace StulPlugin
 
         private async void OnDestroy()
         {
-            await kv.Close();
+            await _kv.Close();
         }
 
         private IEnumerator ConnectKV()
@@ -75,10 +89,10 @@ namespace StulPlugin
         private async Task SetupKV()
         {
             // Connect to default address
-            await kv.Connect(PluginConfig.StrimertulAddress.Value, PluginConfig.AuthKey.Value);
+            await _kv.Connect(PluginConfig.StrimertulAddress.Value, PluginConfig.AuthKey.Value);
 
             // Give client to Twitch event source
-            await twitch.SetClient(kv);
+            await _twitch.SetClient(_kv);
         }
     }
 }

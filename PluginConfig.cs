@@ -10,6 +10,8 @@ namespace StulPlugin
         public static ConfigEntry<int> RaidChaosDuration;
         public static ConfigEntry<int> RaidChaosItemsPerMessage;
 
+        public static ConfigEntry<string> CostumeSwapRedeemID;
+
         public static void Initialize(ConfigFile config)
         {
             config.SaveOnConfigSet = true;
@@ -39,7 +41,12 @@ namespace StulPlugin
                 3,
                 "How many items to throw for each chat message"
             );
-                
+
+            CostumeSwapRedeemID = config.Bind(
+                "Redeems",
+                "CostumeSwapRedeemID",
+                "b7fd0393-7618-4413-b87c-b4565a596911",
+                "Redeem ID for the costume swap");
         }
     }
 }
