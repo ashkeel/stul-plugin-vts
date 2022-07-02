@@ -9,6 +9,8 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 
+// ReSharper disable NotAccessedField.Global
+
 namespace StulPlugin
 {
     using KvSubscriber = Action<KvData>;
@@ -131,9 +133,9 @@ namespace StulPlugin
             };
             _websocket.OnError += e => { Log.Error("Error! " + e); };
             _websocket.OnClose += e => { Log.Warn("Connection closed!"); };
-            _websocket.OnMessage += async bytes =>
+            _websocket.OnMessage += bytes =>
             {
-                var message = System.Text.Encoding.UTF8.GetString(bytes);
+                var message = Encoding.UTF8.GetString(bytes);
                 var payloads = message.Split('\n');
                 foreach (var payload in payloads)
                 {

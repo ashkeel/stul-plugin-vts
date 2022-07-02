@@ -70,8 +70,8 @@ namespace StulPlugin
         private static void SwapTextures(string name, int slot)
         {
             // Get active model
-            var cubismModel = GameObject.Find("Live2DModel").GetComponentInChildren<CubismModel>();
-            var vtsModel = cubismModel.gameObject.GetComponent<VTubeStudioModel>();
+            var vtsModel = GameObject.Find("Live2DModel").GetComponentInChildren<VTubeStudioModel>();
+            var cubismModel = vtsModel.Live2DModel;
 
             // Load texture
             var modelPath = Path.GetDirectoryName(vtsModel.Live2DModelJson.AssetPath);

@@ -42,81 +42,117 @@ namespace StulPlugin
 
         private void SetupHairColors()
         {
-            var hairmeshes = new[]
+            var hairdye = new HairDye(new Dictionary<string, HairDye.ModelHairData>()
             {
-                "eyebrow_l", "eyebrow_r", "bang_l", "bang_r", "bang_center", "front_hair_l", "front_hair_r",
-                "hair_cover", "hair_back"
-            };
-            var colors = new Dictionary<string, string>()
+                ["akeel"] = new HairDye.ModelHairData(
+                    new[]
+                    {
+                        "eyebrow_l", "eyebrow_r", "bang_l", "bang_r", "bang_center", "front_hair_l", "front_hair_r",
+                        "hair_cover", "hair_back"
+                    },
+                    new Dictionary<HairDye.HairColor, string>()
+                    {
+                        [HairDye.HairColor.Watermelon] = "F0ACFF|000000",
+                        [HairDye.HairColor.Teal] = "33B2FF|04050E",
+                        [HairDye.HairColor.Tart] = "E45F7F|000000",
+                        [HairDye.HairColor.Grape] = "8B55D6|000000",
+                        [HairDye.HairColor.Grass] = "6CDC3B|131C0F",
+                        [HairDye.HairColor.Mint] = "71FFE3|000000",
+                    }
+                ),
+                ["sonic-ash"] = new HairDye.ModelHairData(
+                    new[]
+                    {
+                        "BrowL", "BrowR", "HairFront", "HairFrontShine", "HairClipSideL", "HairSideR", "HairBack"
+                    },
+                    new Dictionary<HairDye.HairColor, string>()
+                    {
+                        [HairDye.HairColor.Watermelon] = "FFADFF|351617",
+                        [HairDye.HairColor.Teal] = "25ADFF|132F40",
+                        [HairDye.HairColor.Tart] = "E45F7F|371415",
+                        [HairDye.HairColor.Grape] = "9651F5|571D65",
+                        [HairDye.HairColor.Grass] = "6FE939|47651D",
+                        [HairDye.HairColor.Mint] = "5BF1D4|295955",
+                    }
+                )
+            });
+
+            // Add gamer dyes to animation controller
+            foreach (var model in hairdye.Models)
             {
-                ["watermelon"] = "F0ACFF|000000",
-                ["teal"] = "33B2FF|04050E",
-                ["tart"] = "E45F7F|000000",
-                ["grape"] = "8B55D6|000000",
-                ["grass"] = "6CDC3B|131C0F",
-                ["mint"] = "71FFE3|000000",
-                ["_DONTUSE"] = "FF0000|000000"
-            };
-            var hairTints = new Dictionary<string, TintGroup>();
-            foreach (var color in colors)
-            {
-                var artMeshes = hairmeshes.Select(mesh => new StringStringTuple(mesh, color.Value)).ToList();
-                hairTints.Add(color.Key, new TintGroup(artMeshes));
+                _animated.tintGroups.Add(model.Value.GamerDye);
             }
-
-            var gamerTint = new AnimatedTintGroup(hairTints["_DONTUSE"].ArtMeshes, PluginConfig.RGBHairSpeed.Value,
-                -PluginConfig.RGBHairDelay.Value);
-            _animated.tintGroups.Add(gamerTint);
-
-
-            Action checkClearHair = () =>
-            {
-                if (Time.time >= dyeEndTime)
-                {
-                    hairTints["_DONTUSE"].Clear();
-                    gamerTint.Active = false;
-                }
-            };
 
             _twitch.OnRedeem += redeem =>
             {
-                Log.Info($"REDEEMED {redeem.eventData.reward.id}");
+                Log.Info($"REDEEMED {redeem.eventData.reward.id} by {redeem.eventData.user_login}");
+                Log.Info(
+                    $"Current model: {GameObject.Find("Live2DModel").GetComponentInChildren<VTubeStudioModel>().name}");
                 if (redeem.eventData.reward.id == PluginConfig.RGBHairRedeemID.Value)
                 {
-                    gamerTint.Active = true;
-                    dyeEndTime = Time.time + PluginConfig.RGBHairDuration.Value;
-                    TimerUtils.RunAfter(PluginConfig.RGBHairDuration.Value * 1000, checkClearHair);
+                    try
+                    {
+                        hairdye.SetHairDye(HairDye.HairColor.Gamer);
+                        dyeEndTime = Time.time + PluginConfig.RGBHairDuration.Value;
+                        TimerUtils.RunAfter(PluginConfig.RGBHairDuration.Value * 1000, hairdye.ClearHairDye);
+                    }
+                    catch (Exception e)
+                    {
+                        // TODO REFUND
+                        // For now just write it in chat
+                        _kv.Set("twitch/@send-chat-message", $"{redeem.eventData.user_name}: {e.Message}");
+                    }
                 }
 
                 if (redeem.eventData.reward.id == PluginConfig.DyeHairRedeemID.Value)
                 {
-                    var color = redeem.eventData.user_input.ToLower().Trim();
-                    if (hairTints.ContainsKey(color))
+                    try
                     {
-                        hairTints[color].Apply();
+                        var color = redeem.eventData.user_input.ToLower().Trim();
+                        HairDye.HairColor dyeColor;
+                        switch (color)
+                        {
+                            case "watermelon":
+                            case "pink":
+                                dyeColor = HairDye.HairColor.Watermelon;
+                                break;
+                            case "grape":
+                            case "purple":
+                                dyeColor = HairDye.HairColor.Grape;
+                                break;
+                            case "grass":
+                            case "green":
+                                dyeColor = HairDye.HairColor.Grass;
+                                break;
+                            case "mint":
+                            case "aqua":
+                            case "cyan":
+                                dyeColor = HairDye.HairColor.Mint;
+                                break;
+                            case "teal":
+                            case "blue":
+                                dyeColor = HairDye.HairColor.Teal;
+                                break;
+                            case "red":
+                            case "tart":
+                                dyeColor = HairDye.HairColor.Tart;
+                                break;
+                            default:
+                                throw new Exception(
+                                    "Invalid hair color, valid choices are: watermelon / grape / grass / mint / teal / tart");
+                        }
+
+                        hairdye.SetHairDye(dyeColor);
+                        dyeEndTime = Time.time + PluginConfig.DyeHairDuration.Value;
+                        TimerUtils.RunAfter(PluginConfig.DyeHairDuration.Value * 1000, hairdye.ClearHairDye);
                     }
-                    else
+                    catch (Exception e)
                     {
-                        //TODO Refund!!
+                        // TODO Refund
+                        // For now just write it in chat
+                        _kv.Set("twitch/@send-chat-message", $"{redeem.eventData.user_name}: {e.Message}");
                     }
-
-                    dyeEndTime = Time.time + PluginConfig.DyeHairDuration.Value;
-                    TimerUtils.RunAfter(PluginConfig.DyeHairDuration.Value * 1000, checkClearHair);
                 }
-            };
-            _twitch.OnChatMessage += message =>
-            {
-                if (hairTints.ContainsKey(message.Message))
-                {
-                    hairTints[message.Message].Apply();
-                }
-                else
-                {
-                    // Any is fine
-                    hairTints["mint"].Clear();
-                }
-
-                gamerTint.Active = message.Message == "gamer";
             };
         }
 
